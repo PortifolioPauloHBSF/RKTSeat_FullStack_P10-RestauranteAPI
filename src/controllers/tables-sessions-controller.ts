@@ -39,6 +39,34 @@ class TablesSessionsController {
             next(error);
         }
     }
+
+    async update(request: Request, response: Response, next: NextFunction): Promise<any> {
+        try {
+            const id = z
+                .string()
+                .transform((value) => Number(value))
+                .refine((value) => !isNaN(value))
+                .parse(request.params.id);
+
+            const session = await knex<TablesSessionsRepository>("tables_sessions").where({ id }).first();
+
+            if (!session) {
+                throw new AppError("Session not Found!");
+            }
+
+            if (session.closed_at) {
+                throw new AppError("This sessions is already closed!");
+            }
+
+            await knex<TablesSessionsRepository>("tables_sessions")
+                .update({ closed_at: knex.fn.now() })
+                .where({ id });
+
+            return response.json(session);
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export { TablesSessionsController };
