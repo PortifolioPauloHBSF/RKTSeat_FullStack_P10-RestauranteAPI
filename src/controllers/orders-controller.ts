@@ -17,9 +17,7 @@ class OrdersController {
                 .where({ id: table_session_id })
                 .first();
 
-            const product = await knex<ProductRepository>("products")
-                .where({ id: product_id })
-                .first();
+            const product = await knex<ProductRepository>("products").where({ id: product_id }).first();
 
             if (!session) {
                 throw new AppError("session table not found!");
@@ -30,20 +28,45 @@ class OrdersController {
             }
 
             if (!product) {
-                throw new AppError("Product not Found!")
+                throw new AppError("Product not Found!");
             }
 
-            await knex<OrderRepository>('orders').insert({
+            await knex<OrderRepository>("orders").insert({
                 table_session_id,
                 product_id,
                 quantity,
-                price: product.price
-            })
+                price: product.price,
+            });
 
-            return response.status(201).json({status: "Created"});
+            return response.status(201).json({ status: "Created" });
         } catch (error) {
             next(error);
         }
+    }
+
+    async index(request: Request, response: Response, next: NextFunction): Promise<any> {
+        const { table_session_id } = request.params;
+
+        const order = await knex("orders")
+            .select(
+                "orders.id",
+                "orders.table_session_id",
+                "products.name",
+                "orders.price",
+                "orders.quantity",
+                knex.raw("orders.price * orders.quantity as total"),
+                "orders.created_at",
+                "orders.updated_at"
+            )
+            .where({ table_session_id })
+            .join("products", "products.id", "orders.product_id")
+            .orderBy("orders.created_at", "desc");
+
+        if (!order) {
+            throw new Error("Session not found!");
+        }
+
+        return response.json(order);
     }
 }
 
